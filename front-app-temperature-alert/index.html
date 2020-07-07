@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Heat Stress Alert</title>
+  </head>
+  <body>
+    <button id="stopAlarm">Stop Alarm</button>
+    <canvas></canvas>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.0/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+
+    <script>
+      const CC_KEY = "";
+
+      async function getTemperature(apiKey, lat, lon) {
+        const url = `https://api.climacell.co/v3/weather/realtime?lat=${lat}&lon=${lon}&unit_system=us&fields=temp&apikey=${apiKey}`;
+
+        const res = await fetch(url);
+        const { temp } = await res.json();
+        return temp;
+      }
+
+      const temperatureData = {
+        labels: [],
+        datasets: [
+          {
+            label: "Temperature ℉",
+            data: [],
+            fill: false,
+            borderColor: "rgb(255, 99, 132)",
+          },
+        ],
+      };
+
+      const chartOptions = {
+        layout: {
+          padding: {
+            left: 25,
+            right: 25,
+            top: 0,
+            bottom: 0,
+          },
+        },
+        scales: {
+          xAxes: [
+            {
+              type: "time",
+
+              time: {
+                unit: "minutes",
+                unitStepSize: 1,
+                displayFormats: {
+                  minutes: "h:mm a",
+                },
+              },
+            },
+          ],
+          yAxes: [
+            {
+              gridLines: {
+                color: "black",
+                borderDash: [2, 5],
+              },
+            },
+          ],
+        },
+      };
+
+      const lineChart = new Chart(document.querySelector("canvas"), {
+        type: "line",
+        data: temperatureData,
+        options: chartOptions,
+      });
+
+      let src = "alarm.mp3";
+      let audio = new Audio(src);
+
+      async function routine() {
+        const maxTemp = 80;
+        const temp = await getTemperature(CC_KEY, 45.658, 25.6012);
+
+        temperatureData.datasets[0].data.push(temp.value);
+        temperatureData.labels.push(new Date());
+
+        lineChart.update();
+
+        if (temp.value > maxTemp) {
+          audio.play();
+        }
+      }
+
+      document.querySelector("#stopAlarm").addEventListener("click", () => {
+        audio.pause();
+        audio.currentTime = 0;
+      });
+
+      routine();
+      setInterval(routine, 60 * 1000);
+    </script>
+  </body>
+</html>
